@@ -2,9 +2,9 @@
 
 Файлы:
 
-lostfilm-dragger.pl - сам скрипт
-dragger.cfg - конфигурационный файл
-lostfilm.list - список сериалов для скачивания
+lostfilm-dragger.pl - сам скрипт<br/>
+dragger.cfg - конфигурационный файл<br/>
+lostfilm.list - список сериалов для скачивания<br/>
 
 Как использовать.
 
