@@ -8,3 +8,6 @@ torrent-dir = /tmp
 login = mylogin
 pwd = mypassword
 urlPostLogin = http://login1.bogi.ru/login.php?referer=http%3A%2F%2Fwww.lostfilm.tv%2F
+
+[rutor]
+domain = new-rutor.org
