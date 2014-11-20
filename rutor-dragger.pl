@@ -22,10 +22,17 @@ $cfg{rutor}->{domain} || die "No rutor domain configured!";
 my $torrentDir = $cfg{'torrent-dir'}||$scriptDir;
 
 foreach my $url (keys %list) {
-    my $torrent = check_torrent($url,$list{$url}->{bytes});
-    if ($torrent && drag_torrent($torrent->{url},$torrentDir)) {
-        print "Changing list file\n" if ($debug);
-        update_list($scriptDir.'/'.$listFile,$url,$torrent->{bytes});
+    my $torrentFilesNum = torrent_files($url);
+    if ($torrentFilesNum > $list{$url}->{files}) {
+        print "Amount of files has changed\n" if ($debug);
+        my $torrent = find_torrent($url);
+        if ($torrent && drag_torrent($torrent,$torrentDir)) {
+            print "Changing list file\n" if ($debug);
+            update_list($scriptDir.'/'.$listFile,$url,$torrentFilesNum);
+        }
+    }
+    else {
+        print "Previous amount was ".$list{$url}->{files}.". So I'm just exiting\n" if ($debug);
     }
 }
 
@@ -53,38 +60,52 @@ sub drag_torrent {
     return;
 }
 
-sub check_torrent {
-    my ($url,$bytes) = @_;
+sub find_torrent {
+    my $url = shift;
     $url = 'http://'.$cfg{rutor}->{domain}.$url;
+    my $torrent = parse_page(get_page($url));
+    return $torrent; 
+}
+
+sub torrent_files {
+    my $url = shift;
+    my $filesUrl;
+    print "Trying to get amount of files in torrent\n" if ($debug);
+    if ($url =~ /^\D+(\d+)/) {
+        $filesUrl = 'http://'.$cfg{rutor}->{domain}.'/descriptions/'.$1.'.files'; 
+    } 
+    else { 
+        print "Cannot obtain URL for getting files\n" if ($debug);
+        return 0; 
+    }
+    my $content = get_page($filesUrl);
+    my $files = 0;
+    while ( $content =~ /<tr><td>/g ) {
+        $files++;
+    }
+    print "Found that torrent contains $files files\n" if ($debug);
+    return $files;
+}
+
+sub get_page {
+    my $url = shift;
     my $ua = LWP::UserAgent->new;
     $ua->agent($cfg{'user-agent'}) if ($cfg{'user-agent'});
 
     print "Send GET to $url\n" if ($debug);
     my $req = $ua->get($url);
     print "Got ".$req->{_rc}." ".$req->{_msg}."\n" if ($debug);
-    my $torrent = parse_page($req->decoded_content( charset => 'utf8' ),$bytes);
-    return $torrent; 
+    return $req->decoded_content( charset => 'utf8' );
 }
 
 sub parse_page {
-    my ($content,$prevBytes) = @_;
-    if ($content =~ /\((\d+) Bytes\)/) {
-        my $newBytes = $1;
-        if ($prevBytes == $newBytes) {
-            print "Content size haven't changed. Skip this torrent\n" if ($debug);
-            return;
-        }
-        print "Content size have changed. Seeking for torrent URL\n" if ($debug);
-        if ($content =~ /<a href="([^\"]+)"><img src="[^\"]+down\.png">/) {
-            my %res = ( url => $1,
-                        bytes => $newBytes );
-            print "Got URL $1 with Bytes $newBytes\n" if ($debug);
-            return \%res;
-        }
-        print "URL was not found\n" if ($debug);
-        return;
+    my $content = shift;
+    print "Seeking for torrent URL\n" if ($debug);
+    if ($content =~ /<a href="([^\"]+)"><img src="[^\"]+down\.png">/) {
+        print "Got URL $1\n" if ($debug);
+        return $1;
     }
-    print "Content size cannot be fetched from page\n";
+    print "URL was not found\n" if ($debug);
     return;
 }
 
@@ -98,17 +119,17 @@ sub parse_list {
         $line =~ s/\s*$//;
         next if ($line =~ /^#/ || !$line);
         if ($line =~ /^(.+)\|(\d+)/) {
-            $$list{$1}->{bytes} = $2;
+            $$list{$1}->{files} = $2;
         }
         else {
-            $$list{$line}->{bytes} = 0;
+            $$list{$line}->{files} = 0;
         }
     }
     close(LST);
 }
 
 sub update_list {
-    my ($file, $name, $bytes) = @_;
+    my ($file, $name, $files) = @_;
     my $tmpFile = $file.'.swp';
     unlink ($tmpFile);
     open (IN, '<', $file) || die "Cannot open file '$file' for reading";
@@ -116,8 +137,8 @@ sub update_list {
     while (<IN>) {
         chomp;
         if (/${name}($|\|)/i) {
-            print OUT $name."|$bytes\n";
-            print "Modified list string as ".$name."|$bytes\n" if ($debug);
+            print OUT $name."|$files\n";
+            print "Modified list string as ".$name."|$files\n" if ($debug);
         }
         else {
             print OUT $_."\n";
