@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+$ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
 use warnings;
 use strict;
 binmode(STDOUT,':utf8');
