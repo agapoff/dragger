@@ -91,6 +91,7 @@ sub log_in {
     my %formInputs;
     if ($content =~ /action=\"(.+?)\"/) {
         $urlPostLF = $1;
+	$urlPostLF =~ s/^\/\//http:\/\//;
         print "Parsed URL $urlPostLF from response\n" if ($debug);
     }
     while ($content =~ /<input.+?name="(.+?)".+?value="(.*?)" \/>/g) {
@@ -314,7 +315,7 @@ sub find_new_episodes {
     }   
     my $content = $req->decoded_content; 
     my $seriesCount;
-    while ($content =~ /a href=\"\/download\.php\?id=\d+&(\S+)\.S(\d+)E(\d+)[\s\S]{1,400}?ShowAllReleases\('_?(\d+)','(\d+)','(\d+)'/g) {
+    while ($content =~ /a href=\"\/download\.php\?id=\d+&(\S+)\.S(\d+)E(\d+)[\s\S]{1,400}?ShowAllReleases\('_?(\d+)','([\.\d]+)','(\d+)'/g) {
         $seriesCount++;
 	my $name = lc($1);
         my $s = $5;
@@ -347,5 +348,8 @@ sub find_new_episodes {
         $cookie = log_in();
         write_cookie($cookie, $cookieFile) if ($cookie && $cookieFile);
         exit;
+    }
+    elsif ( !$seriesCount ) {
+        print "Cannot parse list\n" if ($debug);
     }
 }
