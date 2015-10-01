@@ -235,7 +235,7 @@ sub parse_list {
         $line =~ s/^\s*//;
         $line =~ s/\s*$//;
         next if ($line =~ /^#/ || !$line);
-        if ($line =~ /^(.+)\|s(\d+)e(\d+)/) {
+        if ($line =~ /^(.+)\|s([\d\.]+)e([\d\.]+)/) {
             $$list{$1}->{season} = $2;
             $$list{$1}->{ep} = $3;
         }
